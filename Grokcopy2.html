@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>密码生成器</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: #333;
+        }
+        .container {
+            text-align: center;
+            padding: 30px;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            max-width: 90%;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        input {
+            padding: 12px 15px;
+            width: 200px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            border-color: #6e8efb;
+            outline: none;
+        }
+        button {
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #copyButton {
+            background-color: #2ecc71;
+        }
+        #copyButton:hover {
+            background-color: #27ae60;
+        }
+        #copyButton:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .password-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        #passwordOutput {
+            font-size: 18px;
+            color: #2c3e50;
+            word-break: break-all;
+            margin: 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            flex-grow: 1;
+            text-align: center;
+            min-height: 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        .message {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .error {
+            background-color: #ffecec;
+            color: #e74c3c;
+            border: 1px solid #f5b7b1;
+        }
+        .success {
+            background-color: #eafaf1;
+            color: #27ae60;
+            border: 1px solid #a3e4d7;
+        }
+        .instructions {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 25px;
+            line-height: 1.5;
+        }
+        .input-group {
+            margin: 20px 0;
+        }
+        /* 清除按钮样式 */
+        #clearButton {
+            background-color: #e74c3c;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        #clearButton:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 密码生成器</h2>
+        
+        <div class="input-group">
+            <input type="text" id="inputChars" maxlength="3" placeholder="输入3个字母或数字"
+                   oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')">
+            <button id="clearButton" onclick="clearInput()">清除</button>
+        </div>
+        
+        <button onclick="generatePassword()">生成密码</button>
+        
+        <div class="password-container">
+            <div id="passwordOutput"></div>
+            <button id="copyButton" onclick="copyPassword()" disabled>复制</button>
+        </div>
+        
+        <div id="errorMessage" class="message error" style="display: none;"></div>
+        <div id="successMessage" class="message success" style="display: none;"></div>
+        
+        <div class="instructions">
+            <p>💡 输入任意3个字母或数字，系统将基于此生成一个10字符的强密码</p>
+            <p>📋 点击"复制"按钮将密码复制到剪贴板</p>
+        </div>
+    </div>
+
+    <script>
+        const charset = {
+            letters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+            digits: '0123456789',
+            symbols: '?!:<>=&,._-/+*'
+        };
+
+        function hashCode(str, salt) {
+            let hash = salt;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash * 31) + str.charCodeAt(i)) & 0x7FFFFFFF;
+            }
+            return hash;
+        }
+
+        function generatePassword() {
+            try {
+                const input = document.getElementById('inputChars').value;
+                const output = document.getElementById('passwordOutput');
+                const error = document.getElementById('errorMessage');
+                const success = document.getElementById('successMessage');
+                const copyButton = document.getElementById('copyButton');
+
+                // 隐藏所有消息
+                error.style.display = 'none';
+                success.style.display = 'none';
+
+                if (input.length !== 3 || !/^[a-zA-Z0-9]{3}$/.test(input)) {
+                    error.textContent = '请输入正好3个字母或数字！';
+                    error.style.display = 'block';
+                    output.textContent = '';
+                    copyButton.disabled = true;
+                    return;
+                }
+
+                const salt = 27;
+                let seed = hashCode(input, salt);
+
+                const random = (max) => {
+                    const a = 1664525;
+                    const c = 1013904223;
+                    const m = 2 ** 32;
+                    seed = (a * seed + c) % m;
+                    return Math.floor(seed / m * max);
+                };
+
+                let letters = charset.letters.split('');
+                let digits = charset.digits.split('');
+                let symbols = charset.symbols.split('');
+
+                let password = [
+                    ...Array(4).fill().map(() => letters[random(letters.length)]),
+                    ...Array(4).fill().map(() => digits[random(digits.length)]),
+                    ...Array(2).fill().map(() => symbols[random(symbols.length)])
+                ];
+
+                // Fisher-Yates 打乱算法
+                for (let i = password.length - 1; i > 0; i--) {
+                    const j = random(i + 1);
+                    [password[i], password[j]] = [password[j], password[i]];
+                }
+
+                const passwordText = password.join('');
+                output.textContent = passwordText;
+                copyButton.disabled = false;
+                
+            } catch (e) {
+                console.error('生成密码时出错:', e);
+                document.getElementById('errorMessage').textContent = '生成密码时出错，请重试！';
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+
+        function copyPassword() {
+            const passwordText = document.getElementById('passwordOutput').textContent;
+            const error = document.getElementById('errorMessage');
+            const success = document.getElementById('successMessage');
+            
+            // 隐藏之前的消息
+            error.style.display = 'none';
+            success.style.display = 'none';
+            
+            if (!passwordText) {
+                error.textContent = '没有密码可复制！';
+                error.style.display = 'block';
+                return;
+            }
+            
+            // 使用现代Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(passwordText).then(() => {
+                    success.textContent = '密码已成功复制到剪贴板！';
+                    success.style.display = 'block';
+                    
+                    // 3秒后清除成功消息
+                    setTimeout(() => {
+                        success.style.display = 'none';
+                    }, 3000);
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    fallbackCopyText(passwordText);
+                });
+            } else {
+                // 使用传统方法
+                fallbackCopyText(passwordText);
+            }
+        }
+        
+        function fallbackCopyText(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // 避免屏幕闪烁
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const success = document.getElementById('successMessage');
+            const error = document.getElementById('errorMessage');
+            
+            try {
+                const successful = document.execCommand('copy');
+                if(successful) {
+                    success.textContent = '密码已成功复制到剪贴板！';
+                    success.style.display = 'block';
+                    
+                    // 3秒后清除成功消息
+                    setTimeout(() => {
+                        success.style.display = 'none';
+                    }, 3000);
+                } else {
+                    throw new Error('复制命令失败');
+                }
+            } catch (err) {
+                console.error('复制失败:', err);
+                error.textContent = '复制失败，请手动选择密码并复制';
+                error.style.display = 'block';
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        // 新增清除输入框内容的函数
+        function clearInput() {
+            document.getElementById('inputChars').value = '';
+            // 清除后隐藏错误和成功消息
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+            // 清除后禁用复制按钮
+            document.getElementById('copyButton').disabled = true;
+            // 清除后清空密码输出
+            document.getElementById('passwordOutput').textContent = '';
+        }
+    </script>
+</body>
+</html>
